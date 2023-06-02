@@ -7,6 +7,11 @@ $roles = @{
     'Standard User' = 'group1', 'group2'
 }
 
+# Define organizations and their corresponding OUs
+$organizations = @{
+    'TestOrg' = 'OU=TestOrg,DC=domain,DC=com'
+}
+
 # Create the form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'New User Creation'
@@ -50,14 +55,50 @@ $roleComboBox.Size = New-Object System.Drawing.Size(260,20)
 $roles.Keys | ForEach-Object { $roleComboBox.Items.Add($_) }
 $form.Controls.Add($roleComboBox)
 
+# Add organization label and combo box
+$orgLabel = New-Object System.Windows.Forms.Label
+$orgLabel.Location = New-Object System.Drawing.Point(10,170)
+$orgLabel.Size = New-Object System.Drawing.Size(280,20)
+$orgLabel.Text = 'Organization:'
+$form.Controls.Add($orgLabel)
+
+$orgComboBox = New-Object System.Windows.Forms.ComboBox
+$orgComboBox.Location = New-Object System.Drawing.Point(10,190)
+$orgComboBox.Size = New-Object System.Drawing.Size(260,20)
+$organizations.Keys | ForEach-Object { $orgComboBox.Items.Add($_) }
+$form.Controls.Add($orgComboBox)
+
 # Add submit button
 $submitButton = New-Object System.Windows.Forms.Button
-$submitButton.Location = New-Object System.Drawing.Point(10,170)
+$submitButton.Location = New-Object System.Drawing.Point(10,220)
 $submitButton.Size = New-Object System.Drawing.Size(260,20)
 $submitButton.Text = 'Create User'
 $submitButton.Add_Click({
     $firstName = $firstNameTextBox.Text
     $lastName = $lastNameTextBox.Text
+    $role = $roleComboBox.SelectedItem
+    $organization = $orgComboBox.SelectedItem
+
+    if (-not $firstName) {
+        [System.Windows.Forms.MessageBox]::Show("Please enter a first name.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    if (-not $lastName) {
+        [System.Windows.Forms.MessageBox]::Show("Please enter a last name.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    if (-not $role) {
+        [System.Windows.Forms.MessageBox]::Show("Please select a role.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    if (-not $organization) {
+        [System.Windows.Forms.MessageBox]::Show("Please select an organization.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
     $username = $firstName.Substring(0,1) + $lastName
     $i = 2
     while (Get-ADUser -Filter { SamAccountName -eq $username }) {
@@ -73,17 +114,14 @@ $submitButton.Add_Click({
         Surname = $lastName
         Enabled = $True
         AccountPassword = $UserPassword
-        ChangePasswordAtLogon = $True
-        PasswordNeverExpires = $False
-        Path = "OU=Users,DC=domain,DC=com" #specify the correct Organizational Unit (OU)
+        ChangePasswordAtLogon = $False
+        PasswordNeverExpires = $True
+        Path = $organizations[$organization] # specify the correct Organizational Unit (OU) based on the selected organization
     }
     $newUser = New-ADUser @UserProperties -PassThru
-    $role = $roleComboBox.SelectedItem
-    if ($role) {
-        $groups = $roles[$role]
-        foreach ($group in $groups) {
-            Add-ADGroupMember -Identity $group -Members $newUser
-        }
+    $groups = $roles[$role]
+    foreach ($group in $groups) {
+        Add-ADGroupMember -Identity $group -Members $newUser
     }
 })
 $form.Controls.Add($submitButton)
