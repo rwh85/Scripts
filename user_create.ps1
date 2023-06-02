@@ -73,8 +73,8 @@ $submitButton.Add_Click({
         Surname = $lastName
         Enabled = $True
         AccountPassword = $UserPassword
-        ChangePasswordAtLogon = $False
-        PasswordNeverExpires = $True
+        ChangePasswordAtLogon = $True
+        PasswordNeverExpires = $False
         Path = "OU=Users,DC=domain,DC=com" #specify the correct Organizational Unit (OU)
     }
     $newUser = New-ADUser @UserProperties -PassThru
